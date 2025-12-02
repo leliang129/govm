@@ -6,6 +6,7 @@ import (
 
 	"github.com/liangyou/govm/internal/cli"
 	"github.com/liangyou/govm/internal/env"
+	"github.com/liangyou/govm/internal/platform"
 	"github.com/liangyou/govm/internal/remote"
 	"github.com/liangyou/govm/internal/storage"
 	"github.com/liangyou/govm/internal/version"
@@ -16,6 +17,12 @@ const appVersion = "0.1.0"
 
 func main() {
 	cfg := models.Config{}
+	checker := platform.NewChecker(cfg)
+	if err := checker.Validate(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
 	store := storage.NewFileStorage(cfg)
 	remoteClient := remote.NewClient()
 	downloader := version.NewDownloader(cfg)
