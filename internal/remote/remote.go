@@ -1,3 +1,3 @@
 package remote
 
-// Package remote will communicate with the Go distribution API to find downloadable versions.
+// Package remote 提供与 Go 官方发行版本 API 的交互能力。
