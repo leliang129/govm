@@ -120,3 +120,26 @@ func TestAppUninstallRequiresForce(t *testing.T) {
 		t.Fatalf("uninstaller not invoked with force: %#v %#v", u.removed, u.forced)
 	}
 }
+
+func TestAppUninstallFlag(t *testing.T) {
+	t.Parallel()
+
+	buf := &bytes.Buffer{}
+	u := &fakeUninstaller{}
+	lister := &fakeLister{local: []models.Version{}}
+	app := NewApp(buf, lister, &fakeInstaller{}, &fakeSwitcher{}, u, "test")
+
+	if err := app.Run([]string{"-uninstall", "1.19"}); err != nil {
+		t.Fatalf("flag uninstall failed: %v", err)
+	}
+	if len(u.removed) != 1 || u.removed[0] != "1.19" || len(u.forced) == 0 || u.forced[0] {
+		t.Fatalf("flag uninstall not recorded: removed=%v forced=%v", u.removed, u.forced)
+	}
+
+	if err := app.Run([]string{"-uninstall", "1.20", "-force"}); err != nil {
+		t.Fatalf("flag uninstall with force failed: %v", err)
+	}
+	if len(u.removed) != 2 || u.removed[1] != "1.20" || !u.forced[1] {
+		t.Fatalf("flag uninstall force not recorded: removed=%v forced=%v", u.removed, u.forced)
+	}
+}

@@ -80,6 +80,11 @@ govm/
 - `govm uninstall <version>`: 卸载指定版本
 - `govm -help`: 显示帮助信息
 - `govm -version`: 显示 govm 版本
+- `govm -uninstall <version>`: flag 形式触发卸载（等价于 `govm uninstall <version>`）
+
+**交互细节**:
+
+- `install` 命令成功完成后，会调用 `Lister` 读取最新安装信息，并以彩色高亮的格式输出摘要，包括 `go version`、`GOROOT`、`GOPATH` 以及需要执行的 `source ~/.bashrc`/`source ~/.zshrc` 等下一步提示。
 
 ### 2. 版本管理服务
 
@@ -193,7 +198,7 @@ type MirrorConfig struct {
 **实现说明**:
 
 - 默认 RegionDetector 调用 `https://ipapi.co/json` 获取 `country_code` 字段，并设置 3 秒超时；结果缓存到内存中，保证只探测一次。
-- MirrorSelector 仅区分中国 (`CN`) 与其他国家：命中 `CN` 时返回 `https://golang.google.cn/dl/?mode=json` 与 `https://studygolang.com/dl/golang/`，否则回退到默认的 `https://go.dev/dl/?mode=json` 与 `https://go.dev/dl/`。
+- MirrorSelector 仅区分中国 (`CN`) 与其他国家：命中 `CN` 时返回 `https://golang.google.cn/dl/?mode=json&include=all` 与 `https://studygolang.com/dl/golang/`，否则回退到默认的 `https://go.dev/dl/?mode=json&include=all` 与 `https://go.dev/dl/`，确保远程版本列表包含历史版本。
 - `internal/remote.Client` 在第一次请求远程版本列表前使用 MirrorSelector 调整自身 `baseURL` 与 `downloadBasePath`，之后的请求复用相同的配置，不额外探测。
 
 ## 数据模型

@@ -96,6 +96,8 @@
 - 配置文件：`~/.bashrc` 或 `~/.zshrc`
 - 遵循 specs 工作流，每完成一个任务更新此文件
 - ✅ Release workflow 修复：已在 `.github/workflows/release.yml` 中显式授予 `contents: write`，确保 `softprops/action-gh-release` 能创建版本。
+- [x] 安装完成提示优化：新增需求（Requirements 3.8 / Tasks 5）——安装成功后 CLI 输出 go version、GOROOT、GOPATH 以及 `source` 命令提示，并采用彩色强调下一步操作。
+- [x] 远程列表与卸载 flag：`govm -remote` 需展示完整历史版本（`include=all`），CLI 需提供 `-uninstall` flag 以便快速卸载（Requirements 1.1 / 8.2，Tasks 3 / 10）。
 
 ---
 

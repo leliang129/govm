@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	defaultBaseURL      = "https://go.dev/dl/?mode=json"
+	defaultBaseURL      = "https://go.dev/dl/?mode=json&include=all"
 	defaultCacheTTL     = 5 * time.Minute
 	defaultDownloadBase = "https://go.dev/dl/"
 )

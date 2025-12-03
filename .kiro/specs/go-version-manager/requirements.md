@@ -23,7 +23,7 @@ Go 版本管理器（govm）是一个命令行工具，用于管理系统中的�
 
 #### 验收标准
 
-1. WHEN 用户执行 `govm -remote` 命令，THEN govm SHALL 从 Go 官方源获取所有可用版本列表
+1. WHEN 用户执行 `govm -remote` 命令，THEN govm SHALL 从 Go 官方源获取所有可用版本列表（不限于最近两个版本）
 2. WHEN govm 获取到版本列表，THEN govm SHALL 按版本号降序显示所有可用版本
 3. WHEN 官方源无法访问，THEN govm SHALL 显示清晰的错误信息并返回非零退出码
 4. WHEN 显示版本列表，THEN govm SHALL 包含版本号和对应的 Linux 平台架构信息
@@ -53,6 +53,7 @@ Go 版本管理器（govm）是一个命令行工具，用于管理系统中的�
 5. WHEN 指定的版本已经安装，THEN govm SHALL 跳过下载并通知用户该版本已存在
 6. WHEN 指定的版本不存在于官方源，THEN govm SHALL 显示错误信息并返回非零退出码
 7. WHEN 下载或安装过程失败，THEN govm SHALL 清理不完整的文件并显示错误信息
+8. WHEN 安装完成，THEN govm SHALL 输出包含 go 版本、GOROOT、GOPATH 以及 `source` 命令提示的摘要信息，并使用醒目的样式提示用户下一步操作
 
 ### 需求 4
 
@@ -109,7 +110,7 @@ Go 版本管理器（govm）是一个命令行工具，用于管理系统中的�
 #### 验收标准
 
 1. WHEN 用户执行 `govm -help` 或 `govm --help` 命令，THEN govm SHALL 显示所有可用命令的列表和说明
-2. WHEN 显示帮助信息，THEN govm SHALL 包含每个命令的用法示例
+2. WHEN 显示帮助信息，THEN govm SHALL 包含每个命令的用法示例及等价 flag（例如 `govm uninstall <version>` 与 `govm -uninstall <version>`）
 3. WHEN 用户执行 `govm -version` 命令，THEN govm SHALL 显示 govm 自身的版本号
 4. WHEN 用户执行不存在的命令，THEN govm SHALL 显示错误信息并提示查看帮助文档
 

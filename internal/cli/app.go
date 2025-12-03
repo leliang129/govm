@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/liangyou/govm/internal/version"
@@ -33,6 +34,14 @@ type SwitchService interface {
 type UninstallService interface {
 	Uninstall(version string, force bool) ([]models.Version, error)
 }
+
+const (
+	colorReset       = "\033[0m"
+	colorBoldGreen   = "\033[1;32m"
+	colorCyan        = "\033[36m"
+	colorYellow      = "\033[33m"
+	colorBoldMagenta = "\033[1;35m"
+)
 
 // App 负责 CLI 命令解析与分发。
 type App struct {
@@ -68,6 +77,8 @@ func (a *App) Run(args []string) error {
 	listFlg := fs.Bool("list", false, "list local versions")
 	helpFlg := fs.Bool("help", false, "show help")
 	versionFlg := fs.Bool("version", false, "show version")
+	uninstallFlg := fs.String("uninstall", "", "uninstall specified version")
+	forceFlg := fs.Bool("force", false, "force uninstall when used with -uninstall")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -84,6 +95,8 @@ func (a *App) Run(args []string) error {
 		return a.handleRemote()
 	case *listFlg:
 		return a.handleList()
+	case *uninstallFlg != "":
+		return a.handleUninstall(*uninstallFlg, *forceFlg)
 	}
 
 	rest := fs.Args()
@@ -187,6 +200,7 @@ func (a *App) handleInstall(input string) error {
 		return err
 	}
 	fmt.Fprintf(a.out, "Installed %s\n", target.FullName)
+	a.printInstallSummary(target.Number)
 	return nil
 }
 
@@ -236,6 +250,7 @@ Commands:
   govm use <version>        Switch to an installed version
   govm current              Show the active version
   govm uninstall <version> [--force]  Remove an installed version
+  govm -uninstall <version> [-force]  Remove an installed version via flag
   govm -help                Show this message
   govm -version             Show govm version`)
 }
@@ -253,4 +268,73 @@ func findVersion(versions []models.Version, number string) (*models.Version, err
 		}
 	}
 	return nil, fmt.Errorf("version %s not found in remote list", number)
+}
+
+func (a *App) printInstallSummary(ver string) {
+	if a.lister == nil {
+		return
+	}
+	versions, err := a.lister.LocalVersions()
+	if err != nil {
+		fmt.Fprintf(a.out, "%s %v\n", colorize("warning:", colorYellow), err)
+		return
+	}
+	goroot := findInstallPath(versions, ver)
+	if goroot == "" {
+		goroot = "(unknown)"
+	}
+	gopath := inferGoPath()
+	sourceCmd := defaultSourceCommand()
+
+	fmt.Fprintln(a.out)
+	fmt.Fprintf(a.out, "%s %s\n", colorize("安装完成", colorBoldGreen), colorize("✓", colorBoldGreen))
+	fmt.Fprintf(a.out, "%s %s\n", colorize("go version:", colorCyan), emphasizeValue(ver))
+	fmt.Fprintf(a.out, "%s %s\n", colorize("goroot:", colorCyan), emphasizeValue(goroot))
+	fmt.Fprintf(a.out, "%s %s\n", colorize("gopath:", colorCyan), emphasizeValue(gopath))
+	fmt.Fprintf(a.out, "%s 运行 %s 让环境变量立即生效\n", colorize("下一步:", colorYellow), highlightCommand(sourceCmd))
+	fmt.Fprintf(a.out, "%s 执行 %s 切换到新安装版本\n", colorize("提示:", colorYellow), highlightCommand("govm use "+ver))
+}
+
+func findInstallPath(versions []models.Version, ver string) string {
+	for _, v := range versions {
+		if v.Number == ver && strings.TrimSpace(v.InstallPath) != "" {
+			return v.InstallPath
+		}
+	}
+	return ""
+}
+
+func inferGoPath() string {
+	if gp := strings.TrimSpace(os.Getenv("GOPATH")); gp != "" {
+		return gp
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, "go")
+	}
+	return "$HOME/go"
+}
+
+func defaultSourceCommand() string {
+	shell := filepath.Base(strings.TrimSpace(os.Getenv("SHELL")))
+	switch shell {
+	case "zsh":
+		return "source ~/.zshrc"
+	default:
+		return "source ~/.bashrc"
+	}
+}
+
+func colorize(value, color string) string {
+	return color + value + colorReset
+}
+
+func emphasizeValue(value string) string {
+	if strings.TrimSpace(value) == "" {
+		value = "(unknown)"
+	}
+	return colorize(value, colorBoldGreen)
+}
+
+func highlightCommand(cmd string) string {
+	return colorize(cmd, colorBoldMagenta)
 }

@@ -11,12 +11,12 @@ type MirrorConfig struct {
 var (
 	// GoDevMirror 表示默认官方源。
 	GoDevMirror = MirrorConfig{
-		APIBase:      "https://go.dev/dl/?mode=json",
+		APIBase:      "https://go.dev/dl/?mode=json&include=all",
 		DownloadBase: "https://go.dev/dl/",
 	}
 	// StudyGolangMirror 表示国内镜像源。
 	StudyGolangMirror = MirrorConfig{
-		APIBase:      "https://golang.google.cn/dl/?mode=json",
+		APIBase:      "https://golang.google.cn/dl/?mode=json&include=all",
 		DownloadBase: "https://studygolang.com/dl/golang/",
 	}
 )
