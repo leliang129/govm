@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	defaultBaseURL   = "https://go.dev/dl/?mode=json"
-	defaultCacheTTL  = 5 * time.Minute
-	downloadBasePath = "https://go.dev/dl/"
+	defaultBaseURL      = "https://go.dev/dl/?mode=json"
+	defaultCacheTTL     = 5 * time.Minute
+	defaultDownloadBase = "https://go.dev/dl/"
 )
 
 var supportedArch = map[string]struct{}{
@@ -66,11 +66,26 @@ func WithCacheTTL(ttl time.Duration) Option {
 	}
 }
 
+// WithDownloadBase 设置下载基础路径。
+func WithDownloadBase(base string) Option {
+	return func(c *Client) {
+		if base == "" {
+			return
+		}
+		if !strings.HasSuffix(base, "/") {
+			base += "/"
+		}
+		c.downloadBase = base
+	}
+}
+
 // Client 实现 RemoteClient 接口。
 type Client struct {
 	baseURL    string
 	httpClient HTTPClient
 	cacheTTL   time.Duration
+	// downloadBase 用于拼接安装包下载 URL。
+	downloadBase string
 
 	mu       sync.Mutex
 	cached   []models.Version
@@ -80,9 +95,10 @@ type Client struct {
 // NewClient 创建远程版本源客户端。
 func NewClient(opts ...Option) *Client {
 	c := &Client{
-		baseURL:    defaultBaseURL,
-		httpClient: http.DefaultClient,
-		cacheTTL:   defaultCacheTTL,
+		baseURL:      defaultBaseURL,
+		httpClient:   http.DefaultClient,
+		cacheTTL:     defaultCacheTTL,
+		downloadBase: defaultDownloadBase,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -140,7 +156,7 @@ func (c *Client) parseVersions(data []byte) ([]models.Version, error) {
 			versions = append(versions, models.Version{
 				Number:      strings.TrimPrefix(rel.Version, "go"),
 				FullName:    rel.Version,
-				DownloadURL: downloadBasePath + file.Filename,
+				DownloadURL: c.downloadBase + file.Filename,
 				FileName:    file.Filename,
 				Checksum:    file.Checksum,
 				OS:          file.OS,

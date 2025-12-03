@@ -167,6 +167,35 @@ type LocalStorage interface {
 }
 ```
 
+### 6. 区域探测与镜像选择
+
+**职责**: 根据公网 IP 探测当前所在国家，决定是否切换到国内镜像源，以避免中国大陆环境下访问 go.dev 网络不稳定。
+
+**接口定义**:
+
+```go
+type RegionDetector interface {
+    // CountryCode 返回探测到的 ISO 国家代码（如 CN、US），失败时返回空串和错误
+    CountryCode(ctx context.Context) (string, error)
+}
+
+type MirrorSelector interface {
+    // Select 根据国家代码返回远程 API 和下载地址
+    Select(countryCode string) MirrorConfig
+}
+
+type MirrorConfig struct {
+    APIBase      string
+    DownloadBase string
+}
+```
+
+**实现说明**:
+
+- 默认 RegionDetector 调用 `https://ipapi.co/json` 获取 `country_code` 字段，并设置 3 秒超时；结果缓存到内存中，保证只探测一次。
+- MirrorSelector 仅区分中国 (`CN`) 与其他国家：命中 `CN` 时返回 `https://golang.google.cn/dl/?mode=json` 与 `https://studygolang.com/dl/golang/`，否则回退到默认的 `https://go.dev/dl/?mode=json` 与 `https://go.dev/dl/`。
+- `internal/remote.Client` 在第一次请求远程版本列表前使用 MirrorSelector 调整自身 `baseURL` 与 `downloadBasePath`，之后的请求复用相同的配置，不额外探测。
+
 ## 数据模型
 
 ### Version 结构
@@ -396,6 +425,23 @@ type Config struct {
 ```
 
 **测试策略**: 基于属性的测试 - 设置当前版本后查询，验证版本在已安装列表且可执行文件存在
+
+---
+
+### 属性 11: 镜像选择回退属性
+
+**需求追溯**: 需求 9.2, 9.4
+
+**属性陈述**: 对于任意国家代码 `c`，镜像选择函数应该返回与默认源兼容的配置，并在探测失败或非 `CN` 时回退到默认值。
+
+**形式化**:
+```
+∀ country_code c, let cfg = selectMirror(c) in
+  (c = "CN" ⇒ cfg.APIBase = golang_cn_api ∧ cfg.DownloadBase = studygolang_dl) ∧
+  (c ≠ "CN" ⇒ cfg.APIBase = go_dev_api ∧ cfg.DownloadBase = go_dev_dl)
+```
+
+**测试策略**: 基于示例的测试 - 模拟 `CN`、`US`、空字符串等输入，验证选择结果符合预期并与默认源兼容。
 
 
 

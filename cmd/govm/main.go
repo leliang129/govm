@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/liangyou/govm/internal/cli"
 	"github.com/liangyou/govm/internal/env"
 	"github.com/liangyou/govm/internal/platform"
+	"github.com/liangyou/govm/internal/region"
 	"github.com/liangyou/govm/internal/remote"
 	"github.com/liangyou/govm/internal/storage"
 	"github.com/liangyou/govm/internal/version"
@@ -24,7 +26,18 @@ func main() {
 	}
 
 	store := storage.NewFileStorage(cfg)
-	remoteClient := remote.NewClient()
+
+	detector := region.NewDetector()
+	countryCode, err := detector.CountryCode(context.Background())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warn: detect region failed, fallback to default source: %v\n", err)
+	}
+	mirror := region.SelectMirror(countryCode)
+
+	remoteClient := remote.NewClient(
+		remote.WithBaseURL(mirror.APIBase),
+		remote.WithDownloadBase(mirror.DownloadBase),
+	)
 	downloader := version.NewDownloader(cfg)
 	installer := version.NewInstaller(store, downloader)
 	envManager := env.NewManager(store, cfg)

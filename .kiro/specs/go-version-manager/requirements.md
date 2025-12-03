@@ -112,3 +112,15 @@ Go 版本管理器（govm）是一个命令行工具，用于管理系统中的�
 2. WHEN 显示帮助信息，THEN govm SHALL 包含每个命令的用法示例
 3. WHEN 用户执行 `govm -version` 命令，THEN govm SHALL 显示 govm 自身的版本号
 4. WHEN 用户执行不存在的命令，THEN govm SHALL 显示错误信息并提示查看帮助文档
+
+### 需求 9
+
+**用户故事:** 作为位于中国大陆的开发者，我希望 govm 自动切换到国内镜像源，以便能够顺畅地拉取 Go 版本列表并下载安装包
+
+#### 验收标准
+
+1. WHEN govm 启动需要访问远程版本源时，THEN govm SHALL 探测当前公网 IP 所在国家，并缓存探测结果
+2. WHEN 探测结果显示为中国（country code = `CN`），THEN govm SHALL 使用 `https://golang.google.cn/dl/?mode=json` 作为远程版本列表 API
+3. WHEN 探测结果显示为中国（country code = `CN`），THEN govm SHALL 使用 `https://studygolang.com/dl/golang/` 作为下载基础地址构造安装包 URL
+4. WHEN IP 探测失败或返回的国家不是中国，THEN govm SHALL 回退到默认的 `https://go.dev/dl/` 远程源和下载地址
+5. WHEN govm 切换镜像源，THEN govm SHALL 保持与默认源一致的返回格式和功能行为，不影响其他功能

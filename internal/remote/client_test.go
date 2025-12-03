@@ -142,5 +142,44 @@ func TestCompareVersionStrings(t *testing.T) {
 	}
 }
 
+func TestFetchVersionsUsesCustomDownloadBase(t *testing.T) {
+	t.Parallel()
+
+	releases := []release{
+		{
+			Version: "go1.21.0",
+			Files: []releaseFile{
+				{Filename: "go1.21.0.linux-amd64.tar.gz", OS: "linux", Arch: "amd64", Checksum: "sum", Kind: "archive"},
+			},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewEncoder(w).Encode(releases); err != nil {
+			t.Fatalf("encode test data failed: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithHTTPClient(server.Client()),
+		WithDownloadBase("https://mirror.example.com/go"),
+	)
+
+	versions, err := client.FetchVersions()
+	if err != nil {
+		t.Fatalf("FetchVersions error: %v", err)
+	}
+	if len(versions) != 1 {
+		t.Fatalf("unexpected length: %d", len(versions))
+	}
+
+	want := "https://mirror.example.com/go/go1.21.0.linux-amd64.tar.gz"
+	if versions[0].DownloadURL != want {
+		t.Fatalf("unexpected download url: got %s want %s", versions[0].DownloadURL, want)
+	}
+}
+
 // compile-time检查，确保 Client 满足 RemoteClient 接口
 var _ RemoteClient = (*Client)(nil)

@@ -9,6 +9,7 @@ govm 是一个面向 Linux 平台的 Go 版本管理器，使用 Go 语言实现
 - 自动配置 GOROOT/GOPATH/PATH，支持 bash 与 zsh
 - 切换、查看、卸载本地版本，并保留当前版本标记
 - 内置 `govm -help` / `govm -version` 等 CLI 支持
+- 自动探测公网 IP，位于中国大陆时改用 `golang.google.cn` 版本列表 + `studygolang.com/dl/golang/` 下载镜像
 
 ## 系统要求
 
@@ -49,7 +50,7 @@ govm uninstall 1.21.0 --force
 
 ## 故障排除
 
-- **网络错误**：确认可以访问 `https://go.dev/dl/`，或配置代理后重试。
+- **网络错误**：确认可以访问 `https://go.dev/dl/`，或在国内网络确保 `https://golang.google.cn/dl/` / `https://studygolang.com/dl/golang/` 可达，必要时配置代理后重试。
 - **权限不足**：govm 默认安装到 `~/.govm`，请确保对该目录有写权限。
 - **shell 配置未生效**：执行 `source ~/.bashrc` 或 `source ~/.zshrc` 重新加载配置。
 

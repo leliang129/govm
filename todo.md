@@ -15,6 +15,15 @@
 - ✅ 设计文档（design.md）
 - ✅ 任务列表（tasks.md）
 
+## 新增需求（specs 更新）
+
+- [x] R9：国内环境自动切换 Go 镜像源（详见 `.kiro/specs/go-version-manager/requirements.md` 新增章节）
+  _状态：已完成。govm 启动时通过公网 IP 探测国家，命中 `CN` 时改用 studygolang 远程源与下载地址。_
+- [x] D9：区域探测与镜像选择设计（详见 `.kiro/specs/go-version-manager/design.md` “区域探测与镜像选择”）
+  _状态：已完成。RegionDetector + MirrorSelector 设计已经落地到实现，remote.Client 支持注入镜像配置。_
+- [x] T14：实现区域探测与镜像切换（详见 `.kiro/specs/go-version-manager/tasks.md` 任务 14）
+  _状态：已完成。新增 `internal/region` 组件、CLI 启动自适应镜像、remote.Client 增加 DownloadBase 配置，并通过单测与 `go test ./...` 验证。_
+
 ## 开发任务进度
 
 ### 第一阶段：基础设施（任务 1-2）
