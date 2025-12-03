@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -12,9 +13,13 @@ import (
 )
 
 const (
-	defaultEndpoint = "https://ipapi.co/json"
-	defaultTimeout  = 3 * time.Second
+	defaultEndpoint        = "https://ipinfo.io/country"
+	defaultFallback        = "https://ipapi.co/json"
+	defaultTimeout         = 3 * time.Second
+	errEmptyCountryMessage = "region: empty country code"
 )
+
+type responseParser func([]byte) (string, error)
 
 // HTTPClient 最小化 HTTP 客户端接口，便于测试替换。
 type HTTPClient interface {
@@ -23,9 +28,13 @@ type HTTPClient interface {
 
 // Detector 实现 RegionDetector，负责探测公网 IP 所在国家。
 type Detector struct {
-	endpoint string
-	client   HTTPClient
-	timeout  time.Duration
+	endpoint         string
+	fallbackEndpoint string
+	client           HTTPClient
+	timeout          time.Duration
+
+	parsePrimary  responseParser
+	parseFallback responseParser
 
 	mu    sync.Mutex
 	cache string
@@ -40,6 +49,13 @@ func WithEndpoint(endpoint string) Option {
 		if endpoint != "" {
 			d.endpoint = endpoint
 		}
+	}
+}
+
+// WithFallbackEndpoint 设置自定义备选接口地址。
+func WithFallbackEndpoint(endpoint string) Option {
+	return func(d *Detector) {
+		d.fallbackEndpoint = endpoint
 	}
 }
 
@@ -64,9 +80,12 @@ func WithTimeout(timeout time.Duration) Option {
 // NewDetector 创建 Detector 实例。
 func NewDetector(opts ...Option) *Detector {
 	detector := &Detector{
-		endpoint: defaultEndpoint,
-		client:   http.DefaultClient,
-		timeout:  defaultTimeout,
+		endpoint:         defaultEndpoint,
+		fallbackEndpoint: defaultFallback,
+		client:           http.DefaultClient,
+		timeout:          defaultTimeout,
+		parsePrimary:     parsePlainCountry,
+		parseFallback:    parseJSONCountry,
 	}
 	for _, opt := range opts {
 		opt(detector)
@@ -102,6 +121,27 @@ func (d *Detector) lookup(ctx context.Context) (string, error) {
 		return "", errors.New("region: http client is nil")
 	}
 
+	code, err := d.fetchCountry(ctx, d.endpoint, d.parsePrimary)
+	if err == nil {
+		return code, nil
+	}
+
+	if d.fallbackEndpoint != "" {
+		if fallbackCode, fbErr := d.fetchCountry(ctx, d.fallbackEndpoint, d.parseFallback); fbErr == nil {
+			return fallbackCode, nil
+		} else {
+			return "", fmt.Errorf("%v (fallback: %v)", err, fbErr)
+		}
+	}
+
+	return "", err
+}
+
+func (d *Detector) fetchCountry(ctx context.Context, endpoint string, parser responseParser) (string, error) {
+	if parser == nil {
+		return "", errors.New("region: response parser is nil")
+	}
+
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -111,7 +151,7 @@ func (d *Detector) lookup(ctx context.Context) (string, error) {
 		defer cancel()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", fmt.Errorf("region: build request: %w", err)
 	}
@@ -126,16 +166,32 @@ func (d *Detector) lookup(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("region: unexpected status %d", resp.StatusCode)
 	}
 
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("region: read body: %w", err)
+	}
+
+	code, err := parser(data)
+	if err != nil {
+		return "", err
+	}
+	return code, nil
+}
+
+func parsePlainCountry(data []byte) (string, error) {
+	code := strings.ToUpper(strings.TrimSpace(string(data)))
+	if code == "" {
+		return "", errors.New(errEmptyCountryMessage)
+	}
+	return code, nil
+}
+
+func parseJSONCountry(data []byte) (string, error) {
 	var payload struct {
 		CountryCode string `json:"country_code"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(data, &payload); err != nil {
 		return "", fmt.Errorf("region: decode response: %w", err)
 	}
-
-	code := strings.ToUpper(strings.TrimSpace(payload.CountryCode))
-	if code == "" {
-		return "", errors.New("region: empty country code")
-	}
-	return code, nil
+	return parsePlainCountry([]byte(payload.CountryCode))
 }
