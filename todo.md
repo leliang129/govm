@@ -95,6 +95,7 @@
 - 安装目录：`~/.govm/`
 - 配置文件：`~/.bashrc` 或 `~/.zshrc`
 - 遵循 specs 工作流，每完成一个任务更新此文件
+- ✅ Release workflow 修复：已在 `.github/workflows/release.yml` 中显式授予 `contents: write`，确保 `softprops/action-gh-release` 能创建版本。
 
 ---
 
